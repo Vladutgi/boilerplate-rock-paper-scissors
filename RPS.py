@@ -8,52 +8,90 @@ recheck_pattern=False
 recheck_from=0
 last_plays=[]
 found_copy=False
-
+found_x_copy=False
+delay=None
+last_move_copy=False
 def player(prev_play, opponent_history=[]):
-    global found_pattern,pattern,found_pattern_length,last_plays,found_copy
+    global found_pattern, pattern, found_pattern_length, last_plays, found_copy, recheck_pattern, recheck_from,found_x_copy,delay,last_move_copy
+
     if prev_play:
         opponent_history.append(prev_play)
-    guess = "R"
-    if len(opponent_history)>5 and len(opponent_history)<31 and found_pattern==False:
-        check_for_pattern(opponent_history[:30])
 
-    else: 
-        if (len(opponent_history)>=31 and pattern==[]):
-            check_for_pattern(opponent_history[recheck_from:])
-            check_for_copy(last_plays,opponent_history,len(opponent_history))
+    guess = None 
+    
 
-        if(recheck_pattern==True and recheck_from!=0):
-            if(len(opponent_history)-recheck_from>30):
-                pattern=[]
-
-                if(len(opponent_history)>20):
-                    check_for_pattern(opponent_history[recheck_from:])
-                    check_for_copy(last_plays,opponent_history,len(opponent_history))
-                
-    if(found_copy==True):
+    if found_copy:
         found_pattern=False
-        found_pattern_length=0
-        guess=check_for_copy(last_plays,opponent_history,len(opponent_history))
+        found_x_copy=False
+        last_move_copy=False
+        guess=check_for_copy(last_plays,opponent_history)
 
-        if(last_plays[-1]!=oppossite_letter(opponent_history[-1])):
+        if guess:
+            last_plays.append(guess)
+            return guess
+
+        else:
             found_copy=False
 
-    if (found_pattern==True):
+    if found_pattern:
         found_copy=False
-        guess=oppossite_move(len(opponent_history),opponent_history[-1])
+        found_x_copy=False
+        last_move_copy=False
+        guess=oppossite_move(opponent_history)
         
+        if guess:
+            last_plays.append(guess)
+            return guess
+        else:
+            found_pattern=False
+    
+
+    if found_x_copy:
+        found_pattern=False
+        found_copy=False
+        last_move_copy=False
+        if delay is not None:
+            guess = opponent_history[-delay]
+            if guess:
+                last_plays.append(guess)
+                return guess
+        
+            else:
+                found_x_copy=False
+
+
+    if last_move_copy:
+        found_pattern=False
+        found_copy=False
+        found_x_copy=False
+        guess= remaining_option([last_plays[-1],oppossite_letter(last_plays[-1])])
+        last_plays.append(guess)
         return guess
+        
 
-    if (found_pattern==False and found_copy==False and len(opponent_history)>20):
-        copy_guess = check_for_copy(last_plays,opponent_history,len(opponent_history))
-        if copy_guess:
-            guess=copy_guess
-        else: 
-            pick_random()
-    if guess==None:
-        guess=pick_random()
+    if 5 < len(opponent_history)<31 and not found_pattern:
+        check_for_pattern(opponent_history[:30])
 
-    last_plays.append(guess)
+    
+    if len(opponent_history)>=31:
+        if not pattern:
+            check_for_pattern(opponent_history[-30:])
+            check_for_copy(last_plays,opponent_history)
+            last_move_copying(opponent_history[-30:],last_plays[-30:])
+        if(recheck_pattern and recheck_from!=0 and len(opponent_history) - recheck_from > 30):
+            pattern=[]
+
+            check_for_pattern(opponent_history[-30:])
+            check_for_copy(last_plays,opponent_history)
+            last_move_copying(opponent_history[-30:],last_plays[-30:])
+                
+    
+
+    if not guess:
+        if len(last_plays)>5:
+            guess = for_mrugesh(last_plays)
+        else: guess=pick_random
+        last_plays.append(guess)
     
     return guess
 
@@ -62,36 +100,40 @@ def player(prev_play, opponent_history=[]):
 
 
 def check_for_pattern(opponent_history):
-    global found_pattern, pattern, found_pattern_length,recheck_from,recheck_pattern
+    
+    global found_pattern, pattern, found_pattern_length, recheck_from, recheck_pattern
 
-    for i,char in enumerate(opponent_history):
-        recheck_from=(len(opponent_history))
-        a=opponent_history[:len(opponent_history)//2]
-        b=opponent_history[len(opponent_history)//2:]
-        if(a==b):
-            print('\n\n\n\nOpponent:',opponent_history,'\n\nprima lista', a,'\na doua lista', b)
+    half=len(opponent_history)//2
+    
+    a=opponent_history[:half]
+    b=opponent_history[half:]
+    if(a==b and a):
             found_pattern=True
+            pattern=a
             found_pattern_length=len(a)
             recheck_pattern=False
-            pattern=a
-            return oppossite_move(len(opponent_history),opponent_history[-1])
-    if pattern==[] :
-        check_for_x_move_copy(opponent_history[:30],last_plays)
+            recheck_from = len(opponent_history)
+            #print('\n\n\n\nOpponent:',opponent_history,'\n\nprima lista', a,'\na doua lista', b)
 
-def oppossite_move(list_length,prev_play):
-    global pattern
-    if( pattern==[]):
-        return pick_random()
-    rest=list_length%found_pattern_length
+
+def oppossite_move(opponent_history):
+    global pattern, found_pattern, found_pattern_length
+    global recheck_pattern, recheck_from
+
+    if not pattern or not found_pattern_length:
+        return None
+
+    rest=len(opponent_history)%found_pattern_length
     
-    ol =oppossite_letter(pattern[rest])
-    if(prev_play!=pattern[(list_length-1)%found_pattern_length]):
+    expected = pattern[rest]
+    lp= opponent_history[-1]
+    if lp!=pattern[(len(opponent_history)-1)%found_pattern_length]:
         found_pattern=False
-        recheck_from=list_length
-        recheck_pattern=True
         pattern=[]
-
-    return ol
+        recheck_pattern=True
+        recheck_from=len(opponent_history)
+        return None
+    return oppossite_letter(expected)
 
 def oppossite_letter(letter):
     if(letter=='R'): return 'P'
@@ -104,42 +146,73 @@ def pick_random():
 
 
 
-def check_for_copy(lp,oh,oh_length):
-    global found_pattern, pattern, found_pattern_length,found_copy
+def check_for_copy(lp,oh):
+    global found_copy, pattern
 
-    #check_for_x_move_copy(oh[:30],lp[:30])
+    if len(lp)<15 and len(oh)<15:
+        return None
+    oh_length=len(oh)
+    
+    a=oh[-10:]
+    b=oh[-30:-15]
 
-    for i,char in enumerate(oh):
-        
-        a=oh[(len(oh)-15):len(oh)]
-        b=oh[(len(lp)-30):(len(lp)-15)]
+    if(a==b):
+        found_copy=True
+        pattern=a+b
+        #print(f"Found copy pattern: {a} | My last plays: {b}")
 
-
-        c=[]
-        for ch in b:
-            c.append(oppossite_letter(ch))
-        if(a==b):
-           # print('\n\n\n\nOpponent:',oh,'\n\nprima lista copiata', a,'\na doua lista copiata', b)
-            found_copy=True
-            pattern=a+c
-            return pattern[oh_length%len(a+b)]
+        return oppossite_letter(pattern[oh_length%len(pattern)])
 
 
 
 def check_for_x_move_copy(oh,lp):
+    global found_x_copy
     max_delay=min(20,len(lp)-5)
-    for delay in range(1,max_delay+1):
+    possible_delays = []
 
-        for i in range(1,min(len(oh),len(lp)-delay-5)+1):
 
-            lp_slice=lp[-i-delay-5:-i-delay]
-            oh_slice=oh[-i-5:-i-1]
+    for delay in range(1,max_delay+1): 
+        
+
+        for i in range(5,len(oh) - delay ):
+
+            lp_slice=lp[-i-delay:-i]
+            oh_slice=oh[-i-5:-i]
             if lp_slice == oh_slice:
 
-                print(f'Found copy: opponent copying with delay {delay}')
-                return
+                #print(f'Found copy: opponent copying with delay {delay}')
+                possible_delays.append(delay)
+                break
+            #else: print('No pattern was found')
+    if possible_delays:
+        found_x_copy=True
+        delay= max(set(possible_delays), key=possible_delays.count)
+        return delay
+    return None
 
-x = ['R', 'P', 'S', 'R', 'P', 'S', 'R', 'P', 'S', 'R', 'P', 'S', 'R', 'P', 'S']
-y = ['P', 'S', 'R', 'P', 'S', 'R', 'P', 'S', 'R', 'P', 'S', 'R', 'P', 'S', 'R']
 
-check_for_x_move_copy(x, y)
+def last_move_copying(oh,lp):
+    global last_move_copy
+    if len(oh) > 1 and len(lp) > 1:
+
+        for length in range(5, 11):  
+
+            if oh[-length+1:] == lp[-length:-1]:
+                print('last_move_copy')  
+                last_move_copy = True
+                return  
+
+        
+def for_mrugesh(lp):
+    return oppossite_letter(lp[-2])
+
+def remaining_option(not_those):
+    options=['S','P','R']
+    for item in not_those:
+        if item in options:
+            options.remove(item)
+    #print('not_those', not_those)
+    #print(options[0])
+    return options[0] if options else None
+
+
