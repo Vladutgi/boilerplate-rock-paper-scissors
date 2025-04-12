@@ -3,8 +3,12 @@ from RPS_game import play, mrugesh, abbey, quincy, kris, human, random_player
 from RPS import player
 from unittest import main
 play(player, quincy, 1000)
+print('quincy')
+print('\nabbey')
 play(player, abbey, 1000)
+print('\nkris')
 play(player, kris, 1000)
+print('\nmrugesh')
 play(player, mrugesh, 1000)
 
 # Uncomment line below to play interactively against a bot:
@@ -16,4 +20,4 @@ play(player, mrugesh, 1000)
 
 
 # Uncomment line below to run unit tests automatically
-main(module='test_module', exit=False)
+#main(module='test_module', exit=False)
